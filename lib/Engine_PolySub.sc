@@ -67,8 +67,6 @@ Engine_PolySub : NornsEngine {
 				Out.ar(out, level * SelectX.ar(width, [Mix.new(snd).dup, snd]));
 			});
 
-			CroneDefs.add(polyDef);
-
 			paramDefaults = Dictionary.with(
 				\level -> -12.dbamp,
 				\shape -> 0.0,
