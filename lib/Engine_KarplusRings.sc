@@ -1,24 +1,29 @@
 // Pluck uGen workout. Shout me @burn on llllllll.co if you need any assistance.
 
-Engine_KarplusRings : CroneEngine {
+Engine_KarplusRings : NornsEngine {
 	var pg;
 	var amp=0.1;
 	var freq = 440;
 	var decay = 5;
 	var coef = 0.1;
-  var lpf_freq = 3000;
+	var lpf_freq = 3000;
 	var lpf_gain = 1;
 	var bpf_freq = 2000;
 	var bpf_res = 0.3;
 
-		*new { arg context, doneCallback;
-		^super.new(context, doneCallback);
+	/*
+	*new { arg callback;
+		^super.new(callback);
 	}
+	*/
 
 	alloc {
-		pg = ParGroup.tail(context.xg);
+		pg = ParGroup.tail(Norns.server);
 
-		SynthDef("karplus_rings", {arg out, amp = amp, freq = freq, decay = decay, coef = coef, lpf_freq = lpf_freq, lpf_gain = lpf_gain, bpf_freq = bpf_freq, bpf_res = bpf_res;
+		SynthDef("karplus_rings", {
+			arg out, amp = amp,
+			freq = freq, decay = decay, coef = coef,
+			lpf_freq = lpf_freq, lpf_gain = lpf_gain, bpf_freq = bpf_freq, bpf_res = bpf_res;
 			var env, snd;
 			env = EnvGen.kr(Env.linen(0, decay, 0), doneAction: 2);
 			snd = Pluck.ar(
@@ -30,11 +35,16 @@ Engine_KarplusRings : CroneEngine {
 				decaytime: decay,
 				coef: coef);
 			Out.ar(out, Pan2.ar(MoogFF.ar(in: snd, freq: lpf_freq, gain: lpf_gain)));
-		}).play(args: [\out, context.out_b], target: pg);
+		}).send(Norns.server);
 
 		this.addCommand("hz", "f", { arg msg;
 			var val = msg[1];
-            Synth("karplus_rings", [\out, context.out_b, \freq,val,\amp,amp,\decay,decay,\coef,coef,\lpf_freq,lpf_freq,\lpf_gain,lpf_gain,\bpf_freq,bpf_freq,\bpf_res,bpf_res], target:pg);
+            Synth("karplus_rings", [
+				\out, 0, \amp,amp,
+				\freq,val, \decay, decay, \coef, coef,
+				\lpf_freq, lpf_freq, \lpf_gain, lpf_gain,
+				\bpf_freq, bpf_freq, \bpf_res, bpf_res
+			], target:Norns.server);
 		});
 
 		this.addCommand("amp", "f", { arg msg;

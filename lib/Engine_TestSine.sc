@@ -1,21 +1,21 @@
-// CroneEngine_TestSine
-// dumbest possible test: a single, mono sinewave
+// NornsEngine_TestSine
+// simplest possible test: a single, mono sinewave
 
-// Inherit methods from CroneEngine
-Engine_TestSine : CroneEngine {
+// Inherit methods from NornsEngine
+Engine_TestSine : NornsEngine {
 	// Define a getter for the synth variable
 	var <synth;
 
 	// Define a class method when an object is created
-	*new { arg context, doneCallback;
-		// Return the object from the superclass (CroneEngine) .new method
-		^super.new(context, doneCallback);
+	*new { arg doneCallback;
+		// Return the object from the superclass (NornsEngine) .new method
+		^super.new(doneCallback);
 	}
-	// Rather than defining a SynthDef, use a shorthand to allocate a function and send it to the engine to play
-	// Defined as an empty method in CroneEngine
-	// https://github.com/monome/norns/blob/master/sc/core/CroneEngine.sc#L31
 	alloc {
-		// Define the synth variable, whichis a function
+		var server = Norns.server;
+		// {}.play is a syntax shortcut which does two things:
+		// (1) create a SynthDef from a function and send it to the target
+		// (2) create a new Synth from the new SynthDef
 		synth = {
 			// define arguments to the function
 			arg out, hz=220, amp=0.5, amplag=0.02, hzlag=0.01;
@@ -27,16 +27,10 @@ Engine_TestSine : CroneEngine {
 			// Create an output object with two copies of a SineOsc,
 			// passing the Lag'd amp and frequency as args
 			Out.ar(out, (SinOsc.ar(hz_) * amp_).dup);
-		// Send the synth function to the engine as a UGen graph.
-		// It seems like when an Engine is loaded it is passed an AudioContext
-		// that is used to define audio routing stuff (Busses and Groups in SC parlance)
-		// These methods are defined in 
-		// https://github.com/monome/norns/blob/master/sc/core/CroneAudioContext.sc
-		// pass the CroneAudioContext method "out_b" as the value to the \out argument
-		// pass the CroneAudioContext method "xg" as the value to the target.
-		}.play(args: [\out, context.out_b], target: context.xg);
+		// Send the synth function to the server as a UGen graph.
+		}.play(args: [\out, 0], target: server);
 
-		// Export argument symbols as modulatable paramaters
+		// Export argument symbols as modulatable parameters
 		// This could be extended to control the Lag time as additional params
 		this.addCommand("hz", "f", { arg msg;
 			synth.set(\hz, msg[1]);

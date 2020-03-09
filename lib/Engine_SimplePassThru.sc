@@ -1,40 +1,33 @@
-Engine_SimplePassThru : CroneEngine {
+Engine_SimplePassThru : NornsEngine {
 
 	var amp=0;
 	var <synth;
 
-// this is your constructor. the 'context' arg is a CroneAudioContext.
-// it provides input and output busses and groups.
-// see its implementation for details.
-	*new { arg context, doneCallback;
-		^super.new(context, doneCallback);
-	}
-
-// this is called when the engine is actually loaded by a script.
-// you can assume it will be called in a Routine,
-//  and you can use .sync and .wait methods.
+	// this is called when the engine is actually loaded by a script.
+	// you can assume it will be called in a Routine,
+	//  so you can use e.g. Server.sync and (time).wait methods.
 	alloc {
-		//Add SynthDefs
-		SynthDef(\passThru, {|inL, inR, out, amp=0 |
-			// read stereo
-			var sound = [In.ar(inL), In.ar(inR)];
-			Out.ar(out, sound*amp);
-		}).add;
+		var server = Norns.server;
+		// a synthdef that simply reads and writes a stereo signal.
+		SynthDef(\adc_patch_stereo, {|amp=0 |
+			// read 2 channels from the JACK input ports
+			var sound = SoundIn.ar(0, 2);
+			// write to the JACK output ports.
+			// `sound` is a 2-channel signal at this point.
+			Out.ar(0, sound*amp);
+		}).send(server);
 
-		context.server.sync;
+		// this tells the enclosing thread to pause,
+		// until the server is finished processing all pending requests.
+		server.sync;
 
-		synth = Synth.new(\passThru, [
-			\inL, context.in_b[0].index,			
-			\inR, context.in_b[1].index,
-			\out, context.out_b.index,
-			\amp, 0],
-		context.xg);
+		synth = Synth.new(\passThru, [\amp, 0], server);
 
-// this is how you add "commands",
-// which is how the lua interpreter controls the engine.
-// the format string is analogous to an OSC message format string,
-// and the 'msg' argument contains data.
-
+		// this is how you add "commands",
+		// which is how the lua interpreter controls the engine.
+		// the format string is analogous to an OSC message format string,
+		// and the 'msg' argument contains data.
+		
 		this.addCommand("test", "ifs", {|msg|
 			msg.postln;
 		});
@@ -45,9 +38,9 @@ Engine_SimplePassThru : CroneEngine {
 	}
 
 	free {
-             // here you should free resources (e.g. Synths, Buffers &c)
-// and stop processes (e.g. Routines, Tasks &c)
-            synth.free;
+		// here you should free resources (e.g. Synths, Buffers &c)
+		// and stop processes (e.g. Routines, Tasks &c)
+		synth.free;
 	}
 
 } 

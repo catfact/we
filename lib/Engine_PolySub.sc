@@ -1,6 +1,6 @@
 // a subtractive polysynth engine
 
-Engine_PolySub : CroneEngine {
+Engine_PolySub : NornsEngine {
 
 	classvar <polyDef;
 	classvar <paramDefaults;
@@ -49,7 +49,6 @@ Engine_PolySub : CroneEngine {
 				osc2 = Pulse.ar(freq:freq, width:timbre);
 				// TODO: could add more oscillator types
 
-
 				// FIXME: probably a better way to do this channel selection
 				snd = [SelectX.ar(shape, [osc1[0], osc2[0]]), SelectX.ar(shape, [osc1[1], osc2[1]])];
 				snd = snd + ((SinOsc.ar(hz / 2) * sub).dup);
@@ -88,12 +87,13 @@ Engine_PolySub : CroneEngine {
 		} // Startup
 	} // initClass
 
-	*new { arg context, callback;
-		^super.new(context, callback);
+	*new { arg callback;
+		^super.new(callback);
 	}
 
 	alloc {
-		gr = ParGroup.new(context.xg);
+		var server = Norns.server;
+		gr = ParGroup.new(server);
 
 		voices = Dictionary.new;
 		ctlBus = Dictionary.new;
@@ -101,7 +101,7 @@ Engine_PolySub : CroneEngine {
 			var name = ctl.name;
 			postln("control name: " ++ name);
 			if((name != \gate) && (name != \hz) && (name != \out), {
-				ctlBus.add(name -> Bus.control(context.server));
+				ctlBus.add(name -> Bus.control(server));
 				ctlBus[name].set(paramDefaults[name]);
 			});
 		});
@@ -120,12 +120,10 @@ Engine_PolySub : CroneEngine {
 			this.addVoice(msg[1], msg[2], true);
 		});
 
-
 		// same as start, but don't map control busses, just copy their current values
 		this.addCommand(\solo, "if", { arg msg;
 			this.addVoice(msg[1], msg[2], false);
 		});
-
 
 		// stop a voice
 		this.addCommand(\stop, "i", { arg msg;
@@ -146,8 +144,11 @@ Engine_PolySub : CroneEngine {
 		postln("polysub: performing init callback");
 	}
 
+	// create a new synth voice on the fly
 	addVoice { arg id, hz, map=true;
-		var params = List.with(\out, context.out_b.index, \hz, hz);
+		// a list of all current parameter values for this voice
+		// most will be added later, copying current control bus values
+		var params = List.with(\out, 0, \hz, hz);
 		var numVoices = voices.size;
 
 		if(voices[id].notNil, {
